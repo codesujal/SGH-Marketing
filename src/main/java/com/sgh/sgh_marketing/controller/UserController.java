@@ -10,19 +10,29 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 @Controller
-@RequestMapping("/user")
+@RequestMapping("/")
 public class UserController {
 
     @Autowired
     private UserRepository userRepository;
 
-    @GetMapping("/login")
+    @GetMapping("/")
     public String showLoginForm(Model model) {
         model.addAttribute("loginRequest", new LoginRequest());
-        return "login";
+        return "index";
     }
 
-    @PostMapping("/login")
+    @GetMapping("/signin")
+    public String showSigninPage(){
+        return "auth/signin";
+    }
+
+    @GetMapping("/feedback")
+    public String showFeedbackPage(){
+        return "feedback/feedback";
+    }
+
+    @PostMapping("/")
     public String processLogin(@ModelAttribute LoginRequest loginRequest, Model model) {
         Optional<UserModel> userOpt = userRepository.findByEmail(loginRequest.getEmail());
 
