@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hospital Marketing App</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg-primary: white;
+      --text-secondary: #61A7A5;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-primary);
+      font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    .top {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.5);
+      box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
+
+    .top span {
+      color: #61A7A5;
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+
+    section {
+      position: absolute;
+      top: 0;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      padding: 0;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: var(--bg-primary);
+      box-shadow: 0px -4px 20px 2px rgba(0, 0, 0, 0.1);
+      z-index: 1001;
+    }
+
+    nav ul {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      height: 60px;
+      list-style-type: none;
+    }
+
+    nav ul li a {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.9em;
+      text-decoration: none;
+      color: var(--text-secondary);
+    }
+
+    nav ul li a.active {
+      color: black;
+    }
+
+    .leaflet-top.leaflet-left {
+      top: 80px !important;
+      left: 15px !important;
+    }
+
+    .leaflet-control-container {
+      z-index: 10;
+    }
+
+    .popup-content {
+      font-size: 0.9rem;
+      color: #333;
+    }
+
+    .popup-content b {
+      color: #61A7A5;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top">
+    <span>Maps</span>
+  </div>
+
+  <section>
+    <div id="map"></div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map("map").setView([22.84, 88.36], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    const cityCenters = [
+      { name: "Bandel", coords: [22.925, 88.376] },
+      { name: "Chandannagar", coords: [22.866, 88.375] },
+      { name: "Chinsurah", coords: [22.896, 88.389] },
+      { name: "Mankundu", coords: [22.8473120, 88.3471304] }, // <-- corrected
+      { name: "Bhadreswar", coords: [22.8282019, 88.3414937] }
+    ];
+
+    const cityColors = ["#80bfff", "#ffb3b3", "#b3ffb3", "#ffd480", "#e6b3ff"];
+
+    cityCenters.forEach((city, i) => {
+      const circle = L.circle(city.coords, {
+        radius: 1500,
+        color: cityColors[i],
+        fillColor: cityColors[i],
+        fillOpacity: 0.25,
+        weight: 1.5,
+      }).addTo(map).bindPopup(`<b>${city.name}</b>`);
+    });
+
+    fetch("/api/patients")
+      .then(res => res.json())
+      .then(patients => {
+        const markers = [];
+        patients.forEach(p => {
+          if (p.latitude && p.longitude) {
+            const popupHtml = `
+              <div class="popup-content">
+                <b>Age:</b> ${p.age || "N/A"}<br>
+                <b>Gender:</b> ${p.gender || "N/A"}<br>
+                <b>Diagnosis:</b> ${p.diagnosis || "N/A"}<br>
+                <b>City/Village:</b> ${p.city_or_village || "N/A"}
+              </div>
+            `;
+            const marker = L.marker([p.latitude, p.longitude]).addTo(map);
+            marker.bindPopup(popupHtml);
+            markers.push(marker);
+          }
+        });
+
+        if (markers.length) {
+          const group = L.featureGroup(markers);
+          map.fitBounds(group.getBounds(), { padding: [30, 30] });
+        }
+      })
+      .catch(err => console.error("Error loading patients:", err));
+  </script>
+
+  <nav>
+    <ul>
+      <li>
+        <a href="/feedbacks">
+          <i class="fa-solid fa-house"></i>
+          <span>Home</span>
+        </a>
+      </li>
+      <li>
+        <a href="#stats">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Stats</span>
+        </a>
+      </li>
+      <li>
+        <a href="#maps" class="active">
+          <i class="fa-solid fa-location-dot"></i>
+          <span>Maps</span>
+        </a>
+      </li>
+      <li>
+        <a href="#budget">
+          <i class="fa-solid fa-indian-rupee-sign"></i>
+          <span>Budget</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+</body>
+</html>
